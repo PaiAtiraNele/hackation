@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CREA Connect AI - V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .tab-active { border-bottom: 2px solid #3B82F6; color: #1E3A8A; font-weight: bold; }
+        .tab-inactive { color: #9CA3AF; }
+        .dashed-box { border: 2px dashed #9CA3AF; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen font-sans overflow-hidden">
+    <div id="app" class="h-full flex flex-col md:flex-row">
+        <div class="w-full md:w-1/3 mx-auto h-full bg-white shadow-2xl relative flex flex-col md:rounded-3xl md:h-[95%] md:mt-4 md:border-8 md:border-gray-800 overflow-hidden">
+            <header class="bg-blue-900 text-white p-6 pt-8 rounded-b-3xl shadow-lg z-10">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-xl font-bold">CREA Connect <span class="text-cyan-400">AI</span></h1>
+                    <div class="flex items-center gap-2 text-[10px]">
+                        <button @click="alternarModo('solicitante')" :class="modo==='solicitante' ? 'bg-white text-blue-900' : 'bg-white/10 text-white'" class="px-2 py-1 rounded-full font-bold">Solicitante</button>
+                        <button @click="alternarModo('funcionario')" :class="modo==='funcionario' ? 'bg-white text-blue-900' : 'bg-white/10 text-white'" class="px-2 py-1 rounded-full font-bold">Funcionário</button>
+                        <div class="bg-white/10 px-2 py-1 rounded">V2.0 Beta</div>
+                    </div>
+                </div>
+                <div v-if="modo==='solicitante'" class="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider">
+                    <div :class="step >= 1 ? 'text-cyan-400' : 'text-blue-400'">Pré-validação</div>
+                    <div class="h-0.5 w-4 bg-blue-700"><div class="h-full bg-cyan-400 transition-all" :style="{width: step >= 1 ? '100%' : '0%'}"></div></div>
+                    <div :class="step >= 2 ? 'text-cyan-400' : 'text-blue-400'">Dados</div>
+                    <div class="h-0.5 w-4 bg-blue-700"><div class="h-full bg-cyan-400 transition-all" :style="{width: step >= 2 ? '100%' : '0%'}"></div></div>
+                    <div :class="step >= 3 ? 'text-cyan-400' : 'text-blue-400'">Documentos</div>
+                    <div class="h-0.5 w-4 bg-blue-700"><div class="h-full bg-cyan-400 transition-all" :style="{width: step >= 3 ? '100%' : '0%'}"></div></div>
+                    <div :class="step >= 4 ? 'text-cyan-400' : 'text-blue-400'">Finalização</div>
+                </div>
+            </header>
+
+            <main class="flex-1 p-6 overflow-y-auto bg-gray-50 relative">
+                <transition v-if="modo==='solicitante'" name="fade" mode="out-in">
+                    <div v-if="step === 0" key="login" class="flex flex-col h-full space-y-5">
+                        <div class="bg-indigo-900 text-white p-4 rounded-2xl shadow border border-indigo-900 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-bold">Simulação CREA Connect (mock)</p>
+                                    <p class="text-[11px] text-indigo-100">Use dados fictícios para demonstrar o fluxo aprovado ou com inconsistência.</p>
+                                </div>
+                                <i class="fas fa-flask text-indigo-200"></i>
+                            </div>
+                            <div class="flex flex-col md:flex-row gap-2 text-sm">
+                                <button @click="iniciarDemo('sucesso')" class="flex-1 bg-green-500 hover:bg-green-400 text-white py-2 rounded font-bold">Simular aprovação</button>
+                                <button @click="iniciarDemo('falha')" class="flex-1 bg-amber-400 hover:bg-amber-300 text-gray-900 py-2 rounded font-bold">Simular inconsistência</button>
+                            </div>
+                            <p v-if="demoStatus" class="text-[11px] text-indigo-100">{{ demoStatus }}</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-4 shadow border border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h2 class="font-bold text-gray-800">Checklist de documentos (mock)</h2>
+                                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Obrigatório</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Baseado no fluxo atual do CREA-RS (Apolo/SEI/SIC/EMEC).</p>
+                            <ul class="text-xs text-gray-700 list-disc ml-4 mt-2 space-y-1">
+                                <li>Diploma e histórico (PDF).</li>
+                                <li>RG, CPF e reservista.</li>
+                                <li>Foto para carteirinha, PIS/NIT e tipo sanguíneo.</li>
+                                <li>Assinatura manual escaneada na área pontilhada.</li>
+                                <li>Boleto pago antes do registro final.</li>
+                            </ul>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center bg-white p-4 rounded-2xl shadow border border-gray-200 space-y-3">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/2/23/Gov.br_logo.svg" alt="Gov.br" class="h-10 opacity-90">
+                            <p class="text-center text-gray-500 text-xs px-4">Autentique com Gov.br (mock) para preencher dados fictícios automaticamente.</p>
+                            <button @click="loginGov" class="w-full bg-[#1351B4] text-white py-3 rounded-full font-bold shadow-lg hover:bg-[#0c3c8c] transition flex items-center justify-center gap-3">
+                                <i v-if="loadingLogin" class="fas fa-circle-notch fa-spin"></i>
+                                <span v-else>Entrar com Gov.br (mock)</span>
+                            </button>
+                            <p class="text-[11px] text-gray-500">Ou clique em "Simular" para ir direto ao fluxo.</p>
+                        </div>
+                    </div>
+
+                    <div v-else-if="step === 1" key="data-review" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Confirme seus Dados</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-center gap-3 border-b pb-3">
+                                <img :src="user.foto" class="w-14 h-14 rounded-full border-2 border-green-500">
+                                <div>
+                                    <p class="font-bold text-gray-800">{{ user.nome }}</p>
+                                    <p class="text-xs text-gray-500">CPF: {{ user.cpf }}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">Endereço</label>
+                                <div class="flex gap-2 items-center text-sm text-gray-700 bg-gray-50 p-2 rounded"><i class="fas fa-map-marker-alt text-red-400"></i> {{ user.endereco }}</div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">Situação Militar</label>
+                                <div class="flex gap-2 items-center text-sm text-gray-700 bg-gray-50 p-2 rounded"><i class="fas fa-shield-alt text-green-600"></i> {{ user.situacao_militar }}</div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3 text-xs">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="font-bold text-gray-800 text-sm">Mock de captação</p>
+                                    <p class="text-gray-500">Dados fictícios trazidos do Gov.br e check-list para conferência.</p>
+                                </div>
+                                <button @click="carregarMockDados" class="text-[11px] text-blue-700 underline">Preencher mock</button>
+                            </div>
+                            <div class="grid grid-cols-1 gap-2">
+                                <p><strong>CPF:</strong> {{ user.cpf || '***.456.789-**' }}</p>
+                                <p><strong>E-mail:</strong> {{ emailInput || 'mock@teste.com' }}</p>
+                                <p><strong>Endereço:</strong> {{ user.endereco || 'Avenida Exemplo, 1234' }}</p>
+                                <p><strong>Militar:</strong> {{ user.situacao_militar || 'Dispensado' }}</p>
+                            </div>
+                            <div class="bg-indigo-50 border border-indigo-100 rounded p-2 text-[11px] text-indigo-900">
+                                Mostre ao avaliador como o sistema se comporta quando está tudo certo (score ≥ 90%) ou quando a conferência humana é acionada (score < 90%).
+                            </div>
+                        </div>
+                                                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="font-bold text-gray-800">Validação OCR + IA (mock)</p>
+                                    <p class="text-xs text-gray-500">Analisa veracidade dos documentos captados do Gov.br (score mínimo 90%).</p>
+                                </div>
+                                <span class="text-[10px] px-2 py-1 rounded-full" :class="govDocBadgeClass">{{ govDocStatusLabel}}</span>
+                            </div>
+                            <textarea v-model="docListInput" rows="2" class="w-full border rounded px-3 py-2 text-sm" placeholder="Liste os documentos recebidos (RG, CPF, Diploma, Histórico...)"></textarea>
+                            <div class="flex items-center gap-2 text-xs">
+                                <input type="checkbox" id="falha" v-model="simularFalha">
+                                <label for="falha">Simular falha (score < 90 aciona conferência humana)</label>
+                            </div>
+                            <button @click="validarOCR" class="bg-indigo-700 text-white px-3 py-2 rounded font-bold text-sm w-full">Validar via OCR/IA</button>
+                            <div v-if="govDocMsg || govDocDemo || ocrMsg" class="text-[11px] text-gray-700 bg-indigo-50 border border-indigo-100 rounded-lg p-3 space-y-1">
+                                <p class="font-semibold text-indigo-900">Resultado</p>
+                                <p>{{ ocrMsg || govDocMsg }}</p>
+                                <p class="text-[10px] text-gray-600" v-if="govDocDemo">{{ govDocDemo }}</p>
+                                <p class="text-[10px] text-amber-700" v-if="govDocHumanHint">{{ govDocHumanHint }}</p>
+                                <div v-if="ocrExports && Object.keys(ocrExports).length" class="text-[10px] text-gray-600 space-y-1 mt-2">
+                                    <p class="font-semibold text-indigo-900">Exportar para conferência humana:</p>
+                                    <div v-for="(plataforma, key) in ocrExports" :key="key">{{ key }} → {{ plataforma.url }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button @click="salvarDados" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg">Salvar etapa de dados</button>
+                        </div>
+                    </div>
+
+                    <div v-else-if="step === 2" key="diploma" class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="font-bold text-gray-800 text-lg">Validação Acadêmica</h2>
+                            <button @click="carregarInstituicoes" class="text-[11px] text-blue-700 underline">Banco de instituições</button>
+                        </div>
+                        <div class="flex border-b">
+                            <button @click="diplomaMode='qrcode'" :class="diplomaMode==='qrcode' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-2 text-sm transition"><i class="fas fa-qrcode mr-2"></i>QR Code</button>
+                            <button @click="diplomaMode='pdf'" :class="diplomaMode==='pdf' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-2 text-sm transition"><i class="fas fa-file-pdf mr-2"></i>PDF</button>
+                        </div>
+
+                        <div v-if="diplomaMode === 'qrcode'" class="py-4 space-y-4">
+                            <div class="bg-black rounded-xl h-48 flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-camera text-gray-600 text-4xl mb-2"></i>
+                                <button @click="scanQRCode" class="absolute bottom-4 bg-white text-black px-4 py-1 rounded-full text-xs font-bold">Simular Leitura</button>
+                            </div>
+                            <input v-model="qrInput" class="w-full mt-2 p-2 border rounded bg-white text-xs">
+                        </div>
+
+                        <div v-if="diplomaMode === 'pdf'" class="py-4">
+                            <div class="border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl p-8 text-center cursor-pointer relative">
+                                <input type="file" @change="handleFileUpload" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-2"></i>
+                                <p class="text-sm font-bold text-blue-900">Enviar Diploma PDF</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="font-bold text-gray-800">Pacote documental</p>
+                                    <p class="text-xs text-gray-500">RG, CPF, Reservista, Histórico, Foto, PIS, tipo sanguíneo.</p>
+                                </div>
+                                <span class="text-[10px] px-2 py-1 rounded-full" :class="docPackageOk ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'">
+                                    {{ docPackageOk ? 'Estrutura ok' : 'Pendente' }}
+                                </span>
+                            </div>
+                            <label class="block w-full border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-4 text-center cursor-pointer relative hover:border-blue-400 transition">
+                                <input type="file" @change="handleDocPackageUpload" accept=".pdf,.zip,.jpg,.png" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <i class="fas fa-folder-open text-2xl text-blue-500 mb-2"></i>
+                                <p class="text-sm font-bold text-gray-800">Enviar pacote documental</p>
+                                <p class="text-[11px] text-gray-500">PDF único ou ZIP até 10MB</p>
+                            </label>
+                            <div v-if="docPackageMsg" class="text-[11px] text-gray-600 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                                {{ docPackageMsg }}
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="font-bold text-gray-800">Assinatura Manual (caneta preta)</p>
+                                    <p class="text-xs text-gray-500">Use folha branca com área pontilhada para recorte e digitalize em alta resolução.</p>
+                                </div>
+                                <span class="text-[10px] px-2 py-1 rounded-full" :class="signatureReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">
+                                    {{ signatureReady ? 'Capturada' : 'Pendente' }}
+                                </span>
+                            </div>
+                            <div class="dashed-box rounded-lg p-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                                <p><i class="fas fa-pen-nib text-gray-700 mr-1"></i> Assine dentro da área pontilhada utilizando caneta preta.</p>
+                                <p><i class="fas fa-crop-alt text-gray-700 mr-1"></i> Corte a área destacada antes de escanear para a carteirinha.</p>
+                                <p><i class="fas fa-print text-gray-700 mr-1"></i> Upload deve ser uma foto ou PDF do recorte final (300 DPI recomendado).</p>
+                            </div>
+                            <label class="block w-full border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-6 text-center cursor-pointer relative hover:border-blue-400 transition">
+                                <input type="file" @change="handleSignatureUpload" accept="image/*,.pdf" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <i class="fas fa-signature text-3xl text-blue-500 mb-2"></i>
+                                <p class="text-sm font-bold text-gray-800">Enviar Assinatura Escaneada</p>
+                                <p class="text-[11px] text-gray-500">JPG, PNG ou PDF até 5MB</p>
+                            </label>
+                            <div v-if="signatureMsg || signatureHash" class="text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                                <p class="font-semibold text-blue-900">Status da assinatura</p>
+                                <p class="mt-1">{{ signatureMsg }}</p>
+                                <p v-if="signatureHash" class="mt-2 font-mono text-[10px] text-blue-700 break-all">Hash: {{ signatureHash }}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="font-bold text-gray-800">Curso registrado em outro CREA/estado</p>
+                                    <p class="text-xs text-gray-500">Sem QR? A IA envia mensagem automática para a instituição.</p>
+                                </div>
+                                <span class="text-[10px] px-2 py-1 rounded-full" :class="cursoExternoStatusClass">{{ cursoExternoStatusLabel }}</span>
+                            </div>
+                            <p class="text-[11px] text-gray-600">Monte o e-mail de confirmação com os dados completos do solicitante. O backend usa SMTP seguro e valida a resposta via NLP.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <input v-model="cursoExterno.curso" class="border rounded px-3 py-2" placeholder="Curso" />
+                                <input v-model="cursoExterno.instituicao" class="border rounded px-3 py-2" placeholder="Instituição" />
+                                <input v-model="cursoExterno.estado" class="border rounded px-3 py-2" placeholder="Estado" />
+                                <input v-model="cursoExterno.contato" class="border rounded px-3 py-2" placeholder="E-mail/contato da instituição" />
+                                <input v-model="cursoExterno.matricula" class="border rounded px-3 py-2" placeholder="Matrícula interna" />
+                                <input v-model="cursoExterno.cargaHoraria" class="border rounded px-3 py-2" placeholder="Carga horária total" />
+                                <input v-model="cursoExterno.periodo" class="border rounded px-3 py-2" placeholder="Período (ex: 2018/2 a 2023/1)" />
+                                <input v-model="cursoExterno.dataColacao" class="border rounded px-3 py-2" placeholder="Data colação (DD/MM/AAAA)" />
+                                <input v-model="cursoExterno.nascimento" class="border rounded px-3 py-2" placeholder="Data de nascimento" />
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <input type="checkbox" v-model="cursoExterno.codigo" id="codigo" />
+                                <label for="codigo">Possui código/QR de confirmação?</label>
+                            </div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button @click="preencherCursoMock" class="bg-gray-100 text-gray-800 px-3 py-2 rounded text-xs font-bold">Preencher mock</button>
+                                <button @click="enviarCursoExterno" class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold">Enviar e-mail de validação</button>
+                                <button @click="avaliarRespostaExterna" class="bg-gray-800 text-white px-3 py-2 rounded text-xs font-bold">Registrar resposta</button>
+                            </div>
+                            <div class="text-[11px] text-gray-600">Limiar de confiança: <strong>≥ 85%</strong> (score IA baseado em termos positivos/negativos e protocolo).</div>
+                            <div v-if="cursoExternoMensagem" class="text-[11px] text-gray-600 bg-purple-50 border border-purple-100 rounded-lg p-3">
+                                {{ cursoExternoMensagem }}
+                            </div>
+                        </div>
+
+
+                        <div v-if="instituicoes.length" class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-xs text-gray-700 space-y-2">
+                            <p class="text-[11px] font-bold text-gray-800">Catálogo rápido de instituições</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <div v-for="inst in instituicoes" :key="inst.instituicao" class="border rounded p-2">
+                                    <p class="font-semibold text-gray-900">{{ inst.instituicao }}</p>
+                                    <p>Cursos: {{ inst.cursos.join(', ') }}</p>
+                                    <p class="text-[11px] text-gray-500">Atribuições: {{ inst.atribuicoes }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="logs.length > 0" class="bg-gray-900 text-green-400 p-3 rounded-lg text-[10px] font-mono h-32 overflow-y-auto">
+                            <div v-for="log in logs" class="mb-1 border-b border-gray-800 pb-1">> {{ log }}</div>
+                        </div>
+
+                        <button @click="step=3" class="w-full bg-green-700 text-white py-3 rounded-xl font-bold shadow-lg">Salvar etapas de documentos e revisar</button>
+                    </div>
+
+                        <div v-else-if="step === 3" key="revisao" class="space-y-4">
+                            <h2 class="font-bold text-gray-800 text-lg">Revisão e pagamento</h2>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3 text-sm">
+                                <p class="font-semibold text-gray-800">Status das etapas</p>
+                                <ul class="text-xs text-gray-700 space-y-1">
+                                    <li>Dados Gov.br: <strong>{{ stageStatus.dados }}</strong></li>
+                                    <li>OCR/IA (90%+): <strong>{{ stageStatus.ocr }}</strong></li>
+                                    <li>Diploma/QR: <strong>{{ stageStatus.diploma }}</strong></li>
+                                    <li>Pacote documental: <strong>{{ stageStatus.documentos }}</strong></li>
+                                    <li>Assinatura manual: <strong>{{ stageStatus.assinatura }}</strong></li>
+                                    <li>Curso externo: <strong>{{ cursoExternoStatusLabel }}</strong></li>
+                                </ul>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-2 text-xs">
+                            <div class="flex items-center justify-between">
+                                <p class="font-bold text-gray-800">Exportar para APOLO / SIC / EMEC</p>
+                                <span class="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700">Mock</span>
+                            </div>
+                            <button @click="exportarPlataformas" class="bg-blue-700 text-white px-3 py-2 rounded font-bold text-sm">Gerar pacote de conferência</button>
+                            <p v-if="exportMsg" class="text-[11px] text-gray-600">{{ exportMsg }}</p>
+                            <div v-if="Object.keys(exportLinks).length" class="grid grid-cols-1 gap-1">
+                                <div v-for="(dados, key) in exportLinks" :key="key" class="flex justify-between bg-gray-50 border p-2 rounded">
+                                    <span class="font-semibold">{{ key }}</span>
+                                    <span class="text-[10px] text-gray-500">{{ dados.url }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <p class="font-bold text-gray-800">Emitir boleto</p>
+                                <span class="text-[10px] px-2 py-1 rounded-full" :class="boletoPago ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">{{ boletoPago ? 'Pago' : 'Pendente' }}</span>
+                            </div>
+                            <button @click="gerarBoleto" class="bg-orange-600 text-white px-3 py-2 rounded font-bold text-sm">Gerar e marcar como pago</button>
+                            <p class="text-[11px] text-gray-600">Recibo será vinculado às plataformas APOLO/SEI/SIC para consulta.</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+                            <button @click="finalizarRegistro" class="w-full bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg" :disabled="!podeFinalizar">
+                                Registrar em blockchain
+                            </button>
+                            <p class="text-[11px] text-gray-500">Somente finalize após todas as etapas estarem salvas. Em caso de erro, encaminhe para validação humana do CREA.</p>
+                        </div>
+                    </div>
+
+                    <div v-else-if="step === 4" key="success" class="flex flex-col items-center justify-center h-full text-center">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce"><i class="fas fa-check text-4xl text-green-600"></i></div>
+                        <h2 class="text-xl font-bold text-gray-800">Cadastro Realizado!</h2>
+                        <div class="mt-6 w-full text-left bg-white border p-4 rounded-xl shadow-sm">
+                            <p class="text-xs font-bold text-gray-400 uppercase mb-2">Blockchain Hash</p>
+                            <span class="font-mono text-blue-600 text-[10px] break-all">{{ hash }}</span>
+                        </div>
+                    </div>
+                </transition>
+                <div v-else key="painel-funcionario" class="space-y-4">
+                    <div class="bg-white p-4 rounded-2xl shadow border border-gray-200 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h2 class="font-bold text-gray-800">Painel do funcionário (mock)</h2>
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Score ≥ 90%</span>
+                        </div>
+                        <p class="text-xs text-gray-600">Audite certificados de especialização com IA. Pontuações abaixo de 90% geram revisão humana e contato automático com a instituição.</p>
+                        <div class="flex gap-2 flex-wrap text-xs">
+                            <button @click="carregarCertMock" class="bg-gray-100 text-gray-800 px-3 py-2 rounded font-bold">Carregar mock</button>
+                            <button @click="adicionarCertificado" class="bg-blue-600 text-white px-3 py-2 rounded font-bold">Adicionar linha</button>
+                            <button @click="rodarAuditoriaIA" class="bg-indigo-700 text-white px-3 py-2 rounded font-bold">Rodar IA</button>
+                            <button @click="exportarCertificadosCsv" class="bg-green-600 text-white px-3 py-2 rounded font-bold">Exportar CSV</button>
+                        </div>
+                        <p class="text-[11px] text-gray-600" v-if="staffMsg">{{ staffMsg }}</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow border border-gray-200 space-y-3">
+                        <p class="font-semibold text-gray-800">Lista de certificados</p>
+                        <div v-for="(cert, idx) in certificados" :key="idx" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm border-b pb-2">
+                            <input v-model="cert.solicitante" class="border rounded px-3 py-2" placeholder="Nome do solicitante" />
+                            <input v-model="cert.cpf" class="border rounded px-3 py-2" placeholder="CPF" />
+                            <input v-model="cert.certificado" class="border rounded px-3 py-2" placeholder="Título do certificado" />
+                            <input v-model="cert.instituicao" class="border rounded px-3 py-2" placeholder="Instituição emissora" />
+                            <input v-model="cert.contato" class="border rounded px-3 py-2" placeholder="E-mail/telefone da instituição" />
+                            <input v-model="cert.doc_id" class="border rounded px-3 py-2" placeholder="Número do documento" />
+                            <input v-model="cert.indicios" class="border rounded px-3 py-2 md:col-span-2" placeholder="Indícios (ex: rascunho, incompleto)" />
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow border border-gray-200 space-y-3" v-if="certResultados.length">
+                        <div class="flex items-center justify-between">
+                            <p class="font-semibold text-gray-800">Resultados IA</p>
+                            <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Revisão humana: {{ certResumo.revisao_humana || 0 }}</span>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2 text-sm">
+                            <div v-for="(res, idx) in certResultados" :key="idx" class="border rounded p-2 flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-gray-800">{{ res.certificado.certificado }} — {{ res.certificado.solicitante }}</p>
+                                    <p class="text-[11px] text-gray-600">Instituição: {{ res.certificado.instituicao }} | Contato: {{ res.certificado.contato || '—' }}</p>
+                                    <p class="text-[11px] text-gray-500">Próxima ação: {{ res.proxima_acao }}</p>
+                                </div>
+                                <span class="text-[11px] px-2 py-1 rounded-full" :class="res.status==='aprovado' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">Score {{ res.score }}%</span>
+                            </div>
+                        </div>
+                        <div v-if="certCsv" class="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded p-2 font-mono overflow-x-auto">
+                            {{ certCsv.slice(0, 240) }}{{ certCsv.length > 240 ? '...' : '' }}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+        const API_URL = "http://127.0.0.1:8000";
+
+        createApp({
+                    data() {
+                        return {
+                            modo: 'solicitante',
+                            step: 0,
+                            loading: false,
+                            loadingLogin: false,
+                            diplomaMode: 'qrcode',
+                            user: {},
+                            qrInput: 'http://diplomas.ufrgs.br/validar/12345',
+                            logs: [],
+                            hash: '',
+                    pendingRegistroId: null,
+                    signatureReady: false,
+                    signatureMsg: '',
+                    signatureHash: '',
+                    cpfInput: '',
+                    emailInput: '',
+                    docPackageOk: false,
+                    docPackageMsg: '',
+                    instituicoes: [],
+                    govDocStatus: '',
+                    govDocMsg: '',
+                    govDocDemo: '',
+                    govDocScore: null,
+                    govDocHumanHint: '',
+                    ocrStatus: '',
+                    ocrMsg: '',
+                    ocrScore: null,
+                    ocrExports: {},
+                    docListInput: 'RG, CPF, Diploma, Histórico, Foto, Reservista, PIS, Tipo sanguíneo',
+                    simularFalha: false,
+                    stageStatus: {
+                        dados: 'pendente',
+                        diploma: 'pendente',
+                        documentos: 'pendente',
+                        assinatura: 'pendente',
+                        ocr: 'pendente'
+                    },
+                    cursoExterno: { curso: '', instituicao: '', estado: '', contato: '', codigo: false, matricula: '', cargaHoraria: '', periodo: '', dataColacao: '', nascimento: '' },
+                    cursoExternoStatus: 'pendente',
+                    cursoExternoMensagem: '',
+                    boletoPago: false,
+                    demoStatus: '',
+                    exportMsg: '',
+                    exportLinks: {},
+                    certificados: [
+                        { solicitante: 'Maria Engenharia Demo', cpf: '123.456.789-00', certificado: 'Especialização em Segurança', instituicao: 'UFPR', contato: 'registro@ufpr.br', doc_id: 'CERT-001', indicios: '' }
+                    ],
+                    certResultados: [],
+                    certResumo: {},
+                    certCsv: '',
+                    staffMsg: ''
+                }
+            },
+            methods: {
+                alternarModo(novo) {
+                    this.modo = novo;
+                    if (novo === 'funcionario') {
+                        this.staffMsg = 'Use o mock para auditar certificados e acionar conferência humana quando score < 90%.';
+                    }
+                },
+                adicionarCertificado() {
+                    this.certificados.push({ solicitante: '', cpf: '', certificado: '', instituicao: '', contato: '', doc_id: '', indicios: '' });
+                },
+                carregarCertMock() {
+                    this.certificados = [
+                        { solicitante: 'João Revisão Técnica', cpf: '987.654.321-00', certificado: 'Pós em Geotecnia', instituicao: 'UFRGS', contato: 'geotecnia@ufrgs.br', doc_id: 'CERT-777', indicios: '' },
+                        { solicitante: 'Maria Engenharia Demo', cpf: '123.456.789-00', certificado: 'MBA Gestão de Obras (rascunho)', instituicao: 'Faculdade XYZ', contato: 'contato@xyz.edu', doc_id: 'CERT-002', indicios: 'rascunho' }
+                    ];
+                    this.staffMsg = 'Mocks carregados com casos aprovados e um exemplo de revisão humana (<90%).';
+                },
+                addLog(msg) { this.logs.push(msg); },
+                resetLogs() { this.logs = []; },
+                iniciarDemo(tipo) {
+                    this.cpfInput = '123.456.789-00';
+                    this.emailInput = 'demo@teste.com';
+                    this.carregarMockDados();
+                    this.docListInput = tipo === 'falha'
+                        ? 'RG, CPF, Diploma rascunho, Histórico faltando, Reservista'
+                        : 'RG, CPF, Diploma, Histórico, Reservista, Foto, PIS, Tipo sanguíneo';
+                    this.simularFalha = tipo === 'falha';
+                    this.demoStatus = tipo === 'falha'
+                        ? 'Simulação de inconsistência: IA ativará conferência humana.'
+                        : 'Simulação de aprovação automática: score ≥ 90%. Avance para as demais etapas.';
+                    this.stageStatus.dados = 'mock';
+                    this.govDocMsg = '';
+                    this.govDocDemo = '';
+                    this.govDocHumanHint = '';
+                    this.ocrMsg = '';
+                    this.ocrExports = {};
+                    this.step = 1;
+                },
+                carregarMockDados() {
+                    this.user = {
+                        nome: 'Maria Engenharia Demo',
+                        cpf: this.cpfInput || '123.456.789-00',
+                        endereco: 'Rua das Inovações, 500 - Porto Alegre/RS',
+                        situacao_militar: 'Dispensado (Reservista)',
+                        foto: 'https://i.pravatar.cc/300?img=32'
+                    };
+                    this.addLog('Mock preenchido com dados fictícios para demonstração.');
+                },
+                async validarOCR() {
+                    const documentos = this.docListInput.split(',').map(d => d.trim()).filter(Boolean);
+                    this.addLog('Validando pacote via OCR/IA...');
+                    try {
+                        const res = await fetch(`${API_URL}/ocr/validar`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                cpf: this.user.cpf || this.cpfInput,
+                                nome: this.user.nome || 'Solicitante CREA',
+                                documentos,
+                                simular_inconsistencia: this.simularFalha
+                            })
+                        });
+                        const data = await res.json();
+                        this.govDocStatus = data.status;
+                        this.govDocScore = data.score;
+                        this.ocrStatus = data.status;
+                        this.ocrScore = data.score;
+                        this.ocrMsg = data.mensagem;
+                        this.govDocDemo = data.proxima_acao;
+                        this.govDocHumanHint = data.proxima_acao;
+                        this.ocrExports = data.exports || {};
+                        this.stageStatus.ocr = data.status;
+                        this.stageStatus.documentos = data.status === 'aprovado' ? 'ok' : 'revisao';
+                        this.salvarEtapa('ocr', data.status, data);
+                        if(data.faltantes && data.faltantes.length) {
+                            this.addLog('Faltando: ' + data.faltantes.join(', '));
+                        }
+                        this.addLog(this.ocrMsg);
+                    } catch(e) {
+                        this.ocrMsg = 'Erro ao validar via OCR/IA.';
+                        this.stageStatus.documentos = 'alerta';
+                    }
+                },
+                async rodarAuditoriaIA() {
+                    const payload = { certificados: this.certificados.filter(c => c.certificado && c.solicitante) };
+                    if (!payload.certificados.length) { this.staffMsg = 'Preencha ao menos um certificado para auditar.'; return; }
+                    try {
+                        const res = await fetch(`${API_URL}/funcionario/certificados/avaliar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        this.certResultados = data.resultados || [];
+                        this.certResumo = data.resumo || {};
+                        this.staffMsg = `Aprovados: ${this.certResumo.aprovados || 0}. Revisão humana: ${this.certResumo.revisao_humana || 0}.`;
+                    } catch (e) {
+                        this.staffMsg = 'Falha ao rodar auditoria IA.';
+                    }
+                },
+                async exportarCertificadosCsv() {
+                    const payload = { certificados: this.certificados.filter(c => c.certificado && c.solicitante) };
+                    if (!payload.certificados.length) { this.staffMsg = 'Preencha ao menos um certificado para exportar.'; return; }
+                    try {
+                        const res = await fetch(`${API_URL}/funcionario/certificados/exportar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        this.certCsv = data.csv || '';
+                        this.certResultados = data.resultados || this.certResultados;
+                        this.certResumo = data.resumo || this.certResumo;
+                        if (this.certCsv) {
+                            const blob = new Blob([this.certCsv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'certificados_crea.csv';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }
+                        this.staffMsg = 'CSV gerado para planilha (APOLO/SIC/EMEC).';
+                    } catch (e) {
+                        this.staffMsg = 'Falha ao gerar CSV para planilha.';
+                    }
+                },
+                async loginGov() {
+                    this.loadingLogin = true;
+                    try {
+                        const res = await fetch(`${API_URL}/auth/govbr`, { method: 'POST' });
+                        const data = await res.json();
+                        this.user = data.user; this.step = 1;
+                        this.stageStatus.dados = 'salvo';
+                        this.salvarEtapa('dados', 'salvo', { origem: 'govbr' });
+                    } catch(e) { alert("Erro de Backend"); } finally { this.loadingLogin = false; }
+                },
+                async scanQRCode() {
+                    this.resetLogs(); this.addLog("Lendo QR...");
+                    try {
+                        const res = await fetch(`${API_URL}/validar/qrcode`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ qr_content: this.qrInput, user_cpf: this.user.cpf })
+                        });
+                        const data = await res.json();
+                        if(data.valid) { this.addLog("QR Autêntico."); this.setValidationId(99); }
+                        else { this.addLog("QR não validado."); }
+                    } catch(e) { this.addLog("Erro QR."); }
+                },
+                async handleFileUpload(event) {
+                    const file = event.target.files[0]; if(!file) return;
+                    this.resetLogs(); this.addLog("Enviando PDF...");
+                    const formData = new FormData(); formData.append('file', file);
+                    formData.append('nome', this.user.nome); formData.append('cpf', this.user.cpf);
+                    formData.append('endereco', this.user.endereco); formData.append('militar', this.user.situacao_militar);
+
+                    try {
+                        const res = await fetch(`${API_URL}/upload/analisar`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.addLog(`OCR: ${data.analise.instituicao}`);
+                        if(data.score > 80) this.setValidationId(data.id);
+                        else this.addLog("Score insuficiente para aprovação automática.");
+                    } catch(e) { this.addLog("Erro Upload."); }
+                },
+                async handleDocPackageUpload(event) {
+                    const file = event.target.files[0]; if(!file) return;
+                    this.addLog("Validando pacote documental...");
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('doc_type', 'pacote');
+
+                    try {
+                        const res = await fetch(`${API_URL}/documentos/analise`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.docPackageOk = data.estrutura_valida && data.score >= 60;
+                        this.docPackageMsg = data.alerta || `Estrutura detectada (${data.padrao_detectado}) com score ${data.score}`;
+                        if(!this.docPackageOk) this.addLog("Alerta documental: " + (data.alerta || 'padrão divergente')); else this.addLog("Pacote documental ok.");
+                        this.salvarEtapa('documentos', this.docPackageOk ? 'ok' : 'alerta', data);
+                    } catch(e) { this.addLog("Erro ao validar pacote documental."); }
+                },
+                setValidationId(id) {
+                    this.pendingRegistroId = id;
+                    this.salvarEtapa('diploma', 'ok', { referencia: id });
+                },
+                async handleSignatureUpload(event) {
+                    const file = event.target.files[0]; if(!file) return;
+                    this.addLog("Processando assinatura digitalizada...");
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        const res = await fetch(`${API_URL}/assinatura/processar`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.signatureReady = data.valid;
+                        this.signatureMsg = data.msg;
+                        this.signatureHash = data.hash_assinatura;
+                        this.addLog(data.msg);
+                        this.salvarEtapa('assinatura', data.valid ? 'ok' : 'revisao', data);
+                    } catch(e) { this.addLog("Erro ao processar assinatura."); }
+                },
+                async salvarDados() {
+                    this.salvarEtapa('dados', 'salvo', { origem: 'govbr', nome: this.user.nome });
+                    this.step = 2;
+                },
+                async salvarEtapa(etapa, status, detalhes) {
+                    if(!this.user.cpf && !this.cpfInput) return;
+                    try {
+                        await fetch(`${API_URL}/processos/etapa/salvar`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ cpf: this.user.cpf || this.cpfInput, solicitacao_id: this.pendingRegistroId, etapa, status, detalhes })
+                        });
+                        this.stageStatus[etapa] = status;
+                    } catch(e) { this.addLog('Falha ao salvar etapa ' + etapa); }
+                },
+                async carregarInstituicoes() {
+                    try {
+                        const res = await fetch(`${API_URL}/instituicoes/catalogo`);
+                        const data = await res.json();
+                        this.instituicoes = data.instituicoes || [];
+                    } catch(e) { this.addLog('Não foi possível carregar banco de instituições.'); }
+                },
+                preencherCursoMock() {
+                    this.cursoExterno = {
+                        curso: 'Engenharia de Segurança',
+                        instituicao: 'Universidade Federal do Paraná',
+                        estado: 'PR',
+                        contato: 'registro@ufpr.br',
+                        codigo: false,
+                        matricula: '2020A12345',
+                        cargaHoraria: '1800h',
+                        periodo: '2019/2 a 2023/1',
+                        dataColacao: '15/08/2023',
+                        nascimento: '01/02/1998'
+                    };
+                    this.cursoExternoMensagem = 'Mock preenchido com dados fictícios para teste rápido.';
+                },
+                async enviarCursoExterno() {
+                    try {
+                        const res = await fetch(`${API_URL}/crea/externo/email/enviar`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                cpf: this.user.cpf || this.cpfInput,
+                                nome: this.user.nome || 'Solicitante CREA',
+                                curso: this.cursoExterno.curso,
+                                instituicao: this.cursoExterno.instituicao,
+                                estado: this.cursoExterno.estado,
+                                data_nascimento: this.cursoExterno.nascimento || '01/01/1990',
+                                matricula: this.cursoExterno.matricula || 'N/D',
+                                carga_horaria: this.cursoExterno.cargaHoraria || '1600h',
+                                periodo_conclusao: this.cursoExterno.periodo || 'N/D',
+                                data_colacao: this.cursoExterno.dataColacao || 'N/D',
+                                email_instituicao: this.cursoExterno.contato,
+                                solicitacao_id: this.pendingRegistroId || null
+                            })
+                        });
+                        const data = await res.json();
+                        if(res.ok) {
+                            this.cursoExternoMensagem = data.detalhes?.envio?.preview_body || 'Mensagem enviada/simulada.';
+                            this.cursoExternoStatus = data.status === 'email_enviado' ? 'aguardando' : 'pendente';
+                            this.salvarEtapa('curso_externo', 'aguardando', data);
+                            this.salvarEtapa('curso_externo_email', data.status, data);
+                        } else {
+                            this.cursoExternoMensagem = data.detail || 'Erro ao enviar mensagem.';
+                            this.cursoExternoStatus = 'erro';
+                        }
+                    } catch(e) { this.cursoExternoMensagem = 'Erro ao comunicar instituição.'; this.cursoExternoStatus = 'erro'; }
+                },
+                async avaliarRespostaExterna() {
+                    const resposta = prompt('Cole a resposta da instituição para avaliação automática:') || '';
+                    if(!resposta) return;
+                    try {
+                        const res = await fetch(`${API_URL}/crea/externo/avaliar_resposta`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ cpf: this.user.cpf || this.cpfInput, resposta, solicitante_id: this.pendingRegistroId, solicitante_nome: this.user.nome || 'Solicitante CREA' })
+                        });
+                        const data = await res.json();
+                        this.cursoExternoStatus = data.status;
+                        const scoreTxt = data?.analise?.score ? ` Score ${Math.round(data.analise.score * 100)}%.` : '';
+                        this.cursoExternoMensagem = `${data.comentario || ''}${scoreTxt}`;
+                        this.salvarEtapa('curso_externo', data.status, data);
+                    } catch(e) { this.cursoExternoMensagem = 'Falha ao avaliar resposta.'; }
+                },
+                gerarBoleto() {
+                    this.boletoPago = true;
+                    this.addLog('Boleto emitido e marcado como pago.');
+                },
+                async exportarPlataformas() {
+                    try {
+                        const res = await fetch(`${API_URL}/exportar/plataformas?cpf=${encodeURIComponent(this.user.cpf || this.cpfInput)}&solicitacao_id=${this.pendingRegistroId || ''}`);
+                        const data = await res.json();
+                        this.exportLinks = data.plataformas || {};
+                        this.exportMsg = data.msg;
+                        this.addLog('Pacote exportado para APOLO/SIC/EMEC (mock).');
+                    } catch(e) {
+                        this.exportMsg = 'Falha ao gerar pacote de exportação.';
+                    }
+                },
+                async finalizarRegistro() {
+                    if(!this.pendingRegistroId) { this.addLog('Diploma ou QR ainda não vinculado.'); return; }
+                    if(!this.signatureReady) { this.addLog('Assinatura manual pendente.'); return; }
+                    if(!this.boletoPago) { this.addLog('Boleto precisa estar pago.'); return; }
+                    this.addLog('Registrando Blockchain...');
+                    await new Promise(r => setTimeout(r, 800));
+                    const res = await fetch(`${API_URL}/blockchain/registrar/${this.pendingRegistroId}`, { method: 'POST' });
+                    const data = await res.json();
+                    this.hash = data.hash; this.step = 4;
+                }
+            },
+            computed: {
+                govDocStatusLabel() {
+                    if(this.ocrStatus === 'aprovado' || this.govDocStatus === 'conferido') return `Aprovado (score ${this.govDocScore ?? this.ocrScore ?? '-'}%)`;
+                    if(this.ocrStatus === 'revisao_humana' || this.stageStatus.documentos === 'revisao') return `Revisão humana (score ${this.govDocScore ?? this.ocrScore ?? '-' }%)`;
+                    if(!this.govDocStatus) return 'Pendente';
+                    return `Inconsistente (score ${this.govDocScore ?? this.ocrScore ?? '-' }%)`;
+                },
+                govDocBadgeClass() {
+                    if(this.ocrStatus === 'aprovado' || this.govDocStatus === 'conferido') return 'bg-green-100 text-green-700';
+                    if(this.ocrStatus === 'revisao_humana' || this.stageStatus.documentos === 'revisao') return 'bg-amber-100 text-amber-700';
+                    if(this.stageStatus.dados === 'falha') return 'bg-red-100 text-red-700';
+                    return 'bg-gray-100 text-gray-700';
+                },
+                cursoExternoStatusLabel() {
+                    return {
+                        pendente: 'Pendente',
+                        aguardando: 'Aguardando',
+                        deferido: 'Deferido',
+                        indeferido: 'Indeferido',
+                        erro: 'Erro'
+                    }[this.cursoExternoStatus] || 'Pendente';
+                },
+                cursoExternoStatusClass() {
+                    return {
+                        pendente: 'bg-gray-100 text-gray-700',
+                        aguardando: 'bg-amber-100 text-amber-700',
+                        deferido: 'bg-green-100 text-green-700',
+                        indeferido: 'bg-red-100 text-red-700',
+                        erro: 'bg-red-100 text-red-700'
+                    }[this.cursoExternoStatus] || 'bg-gray-100 text-gray-700';
+                },
+                podeFinalizar() {
+                    const dadosOk = !['pendente', 'falha'].includes(this.stageStatus.dados);
+                    const ocrOk = !['pendente', 'revisao_humana', 'falha'].includes(this.stageStatus.ocr);
+                    const docsOk = this.stageStatus.documentos !== 'pendente';
+                    return dadosOk && ocrOk && this.stageStatus.diploma === 'ok' && docsOk && this.stageStatus.assinatura !== 'pendente' && this.boletoPago;
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
