@@ -133,10 +133,22 @@
                     try {
                         const res = await fetch(`${API_URL}/validar/qrcode`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ qr_content: this.qrInput, user_cpf: this.user.cpf })
+                            body: JSON.stringify({
+                                qr_content: this.qrInput,
+                                user_cpf: this.user.cpf,
+                                nome: this.user.nome,
+                                endereco: this.user.endereco,
+                                situacao_militar: this.user.situacao_militar
+                            })
                         });
+                        if(!res.ok) throw new Error('Falha na validação');
                         const data = await res.json();
-                        if(data.valid) { this.addLog("QR Autêntico."); this.finishProcess(99); }
+                        if(data.valid && data.id) {
+                            this.addLog(data.msg);
+                            this.finishProcess(data.id);
+                        } else {
+                            this.addLog(data.msg || 'QR inválido.');
+                        }
                     } catch(e) { this.addLog("Erro QR."); }
                 },
                 async handleFileUpload(event) {
@@ -157,9 +169,14 @@
                 async finishProcess(id) {
                     this.addLog("Registrando Blockchain...");
                     await new Promise(r => setTimeout(r, 1000));
-                    const res = await fetch(`${API_URL}/blockchain/registrar/${id}`, { method: 'POST' });
-                    const data = await res.json();
-                    this.hash = data.hash; this.step = 3;
+                    try {
+                        const res = await fetch(`${API_URL}/blockchain/registrar/${id}`, { method: 'POST' });
+                        if(!res.ok) throw new Error('Registro indisponível');
+                        const data = await res.json();
+                        this.hash = data.hash; this.step = 3;
+                    } catch (e) {
+                        this.addLog("Falha ao registrar na blockchain.");
+                    }
                 }
             }
         }).mount('#app')

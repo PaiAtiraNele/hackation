@@ -1,12 +1,11 @@
 import hashlib
 import time
 from datetime import datetime
-from typing import Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import JSON, Column, DateTime, Integer, String, create_engine
+from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -78,6 +77,9 @@ def login_govbr():
 class QRCodeRequest(BaseModel):
     qr_content: str
     user_cpf: str
+    nome: str | None = None
+    endereco: str | None = None
+    situacao_militar: str | None = None
 
 
 @app.post("/validar/qrcode")
@@ -87,6 +89,20 @@ def validar_qrcode(req: QRCodeRequest, db: Session = Depends(get_db)):
     if "edu" in req.qr_content or "mec" in req.qr_content or "ufrgs" in req.qr_content:
         score = 100
         msg = "Autenticidade digital confirmada na fonte."
+        nova_sol = Solicitacao(
+            nome=req.nome or "Não informado",
+            cpf=req.user_cpf,
+            endereco=req.endereco or "Não informado",
+            situacao_militar=req.situacao_militar or "Não informado",
+            tipo_validacao="QRCODE",
+            instituicao="Identificada via URL",
+            curso="Reconhecido via QR",
+            status="APROVADO_IA",
+            score_ia=score,
+        )
+        db.add(nova_sol)
+        db.commit()
+        db.refresh(nova_sol)
     else:
         score = 20
         msg = "QR Code não reconhecido."
@@ -94,7 +110,8 @@ def validar_qrcode(req: QRCodeRequest, db: Session = Depends(get_db)):
     return {
         "valid": score > 50,
         "score": score,
-        "instituicao": "Identificada via URL",
+        "instituicao": "Identificada via URL" if score > 50 else None,
+        "id": nova_sol.id if score > 50 else None,
         "msg": msg,
     }
 
