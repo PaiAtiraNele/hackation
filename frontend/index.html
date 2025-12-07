@@ -342,6 +342,7 @@
                             <button @click="adicionarCertificado" class="bg-blue-600 text-white px-3 py-2 rounded font-bold">Adicionar linha</button>
                             <button @click="rodarAuditoriaIA" class="bg-indigo-700 text-white px-3 py-2 rounded font-bold">Rodar IA</button>
                             <button @click="exportarCertificadosCsv" class="bg-green-600 text-white px-3 py-2 rounded font-bold">Exportar CSV</button>
+                            <button @click="exportarCertificadosZip" class="bg-emerald-600 text-white px-3 py-2 rounded font-bold">Baixar ZIP</button>
                         </div>
                         <p class="text-[11px] text-gray-600" v-if="staffMsg">{{ staffMsg }}</p>
                     </div>
@@ -567,6 +568,28 @@
                         this.staffMsg = 'CSV gerado para planilha (APOLO/SIC/EMEC).';
                     } catch (e) {
                         this.staffMsg = 'Falha ao gerar CSV para planilha.';
+                    }
+                },
+                async exportarCertificadosZip() {
+                    const payload = { certificados: this.certificados.filter(c => c.certificado && c.solicitante) };
+                    if (!payload.certificados.length) { this.staffMsg = 'Preencha ao menos um certificado para exportar.'; return; }
+                    try {
+                        const res = await fetch(`${API_URL}/funcionario/certificados/exportar_zip`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if(!res.ok) throw new Error('Falha ao gerar ZIP');
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'certificados_crea.zip';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        this.staffMsg = 'ZIP gerado com CSV e resumo para conferência humana.';
+                    } catch (e) {
+                        this.staffMsg = 'Erro ao gerar ZIP para auditoria.';
                     }
                 },
                 async loginGov() {

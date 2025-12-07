@@ -1,11 +1,14 @@
 import csv
 import hashlib
+import json
 import random
 import time
 from datetime import datetime
-from io import StringIO
+from io import BytesIO, StringIO
 from typing import Dict, List, Optional
+import zipfile
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Depends
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, JSON, DateTime
@@ -650,6 +653,23 @@ def exportar_certificados(req: CertificadosBatch):
         },
         "resultados": resultados,
     }
+
+
+@app.post("/funcionario/certificados/exportar_zip")
+def exportar_certificados_zip(req: CertificadosBatch):
+    """Gera um pacote ZIP com CSV e resumo JSON para conferência humana."""
+
+    csv_payload = exportar_certificados(req)
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("certificados.csv", csv_payload["csv"])
+        zf.writestr("resumo.json", json.dumps(csv_payload["resumo"], ensure_ascii=False, indent=2))
+
+    buffer.seek(0)
+    headers = {
+        "Content-Disposition": "attachment; filename=certificados_crea.zip"
+    }
+    return StreamingResponse(buffer, media_type="application/zip", headers=headers)
 
 if __name__ == "__main__":
     import uvicorn
