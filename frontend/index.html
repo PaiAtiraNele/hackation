@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CREA Connect AI - V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .tab-active { border-bottom: 2px solid #3B82F6; color: #1E3A8A; font-weight: bold; }
+        .tab-inactive { color: #9CA3AF; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen font-sans overflow-hidden">
+    <div id="app" class="h-full flex flex-col md:flex-row">
+        <div class="w-full md:w-1/3 mx-auto h-full bg-white shadow-2xl relative flex flex-col md:rounded-3xl md:h-[95%] md:mt-4 md:border-8 md:border-gray-800 overflow-hidden">
+            <header class="bg-blue-900 text-white p-6 pt-8 rounded-b-3xl shadow-lg z-10">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-xl font-bold">CREA Connect <span class="text-cyan-400">AI</span></h1>
+                    <div class="bg-white/10 px-2 py-1 rounded text-[10px]">V2.0 Beta</div>
+                </div>
+                <div class="grid grid-cols-6 text-[10px] uppercase font-bold tracking-wider gap-1">
+                    <div :class="step >= 0 ? 'text-cyan-400' : 'text-blue-400'">Instruções</div>
+                    <div :class="step >= 1 ? 'text-cyan-400' : 'text-blue-400'">Código</div>
+                    <div :class="step >= 2 ? 'text-cyan-400' : 'text-blue-400'">Gov.br</div>
+                    <div :class="step >= 3 ? 'text-cyan-400' : 'text-blue-400'">Dados</div>
+                    <div :class="step >= 4 ? 'text-cyan-400' : 'text-blue-400'">Assinatura</div>
+                    <div :class="step >= 5 ? 'text-cyan-400' : 'text-blue-400'">Documentos</div>
+                </div>
+            </header>
+
+            <main class="flex-1 p-6 overflow-y-auto bg-gray-50 relative">
+                <transition name="fade" mode="out-in">
+                    <!-- Passo 0: Instruções + e-mail/CPF -->
+                    <div v-if="step === 0" key="instructions" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Registro de profissional diplomado</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-2 text-sm">
+                            <p class="text-gray-700 font-semibold">Passo a passo do credenciamento</p>
+                            <ul class="list-disc ml-4 text-gray-600 space-y-1">
+                                <li>Leia as instruções e tenha CPF e e-mail em mãos.</li>
+                                <li>Valide o código recebido por e-mail.</li>
+                                <li>Importe dados do Gov.br e confirme endereço e situação militar.</li>
+                                <li>Imprima o requerimento, assine com <strong>caneta preta</strong> na área delimitada, recorte e escaneie.</li>
+                                <li>Envie diploma, histórico, RG, CPF, Reservista, foto (carteirinha), PIS e tipo sanguíneo.</li>
+                                <li>Pagamentos e registros (APOLO/SEI) são simulados neste MVP.</li>
+                            </ul>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">CPF</label>
+                                <input v-model="cpfInput" class="w-full p-2 border rounded bg-white" placeholder="000.000.000-00">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">E-mail</label>
+                                <input v-model="email" class="w-full p-2 border rounded bg-white" placeholder="prof@exemplo.com">
+                            </div>
+                        </div>
+                        <button @click="enviarCodigo" class="w-full bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg">Enviar código de validação</button>
+                        <p v-if="codeSent" class="text-xs text-green-600">Código enviado para o e-mail informado. Utilize o código de demonstração: <span class="font-mono">123456</span>.</p>
+                    </div>
+
+                    <!-- Passo 1: Validação de código -->
+                    <div v-else-if="step === 1" key="email-code" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Validação por e-mail</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-2 text-sm">
+                            <p>Informe o código enviado para <strong>{{ email }}</strong>.</p>
+                            <input v-model="typedCode" class="w-full p-2 border rounded bg-white" placeholder="123456">
+                        </div>
+                        <button @click="validarCodigo" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg">Validar código</button>
+                    </div>
+
+                    <!-- Passo 2: Login Gov.br -->
+                    <div v-else-if="step === 2" key="login" class="flex flex-col items-center justify-center h-full space-y-6">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/23/Gov.br_logo.svg" alt="Gov.br" class="h-12 opacity-90">
+                        <p class="text-center text-gray-500 text-sm px-4">Utilize sua conta Gov.br para importar dados de identificação.</p>
+                        <button @click="loginGov" class="w-full bg-[#1351B4] text-white py-3 rounded-full font-bold shadow-lg hover:bg-[#0c3c8c] transition flex items-center justify-center gap-3">
+                            <i v-if="loading" class="fas fa-circle-notch fa-spin"></i>
+                            <span v-else>Entrar com Gov.br</span>
+                        </button>
+                    </div>
+
+                    <!-- Passo 3: Dados conferidos -->
+                    <div v-else-if="step === 3" key="data-review" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Confirme seus Dados</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-center gap-3 border-b pb-3">
+                                <img :src="user.foto" class="w-14 h-14 rounded-full border-2 border-green-500">
+                                <div>
+                                    <p class="font-bold text-gray-800">{{ user.nome }}</p>
+                                    <p class="text-xs text-gray-500">CPF: {{ user.cpf }}</p>
+                                    <p class="text-xs text-gray-500">E-mail: {{ email }}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">Endereço</label>
+                                <div class="flex gap-2 items-center text-sm text-gray-700 bg-gray-50 p-2 rounded"><i class="fas fa-map-marker-alt text-red-400"></i> {{ user.endereco }}</div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">Situação Militar</label>
+                                <div class="flex gap-2 items-center text-sm text-gray-700 bg-gray-50 p-2 rounded"><i class="fas fa-shield-alt text-green-600"></i> {{ user.situacao_militar }}</div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button @click="confirmarDados" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg">Dados corretos</button>
+                        </div>
+                    </div>
+
+                    <!-- Passo 4: Captura de assinatura -->
+                    <div v-else-if="step === 4" key="signature" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Assinatura manual</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-2 text-sm">
+                            <p>Assine com <strong>caneta preta</strong> no campo delimitado do requerimento, recorte apenas a área da assinatura e escaneie.</p>
+                            <ul class="list-disc ml-4 text-gray-600 space-y-1">
+                                <li>Não envie foto do documento inteiro; utilize apenas o recorte.</li>
+                                <li>Evite sombras e borrões. Envie em PNG ou JPG.</li>
+                                <li>Pré-visualização simulada e hash de autenticidade serão exibidos.</li>
+                            </ul>
+                        </div>
+                        <div class="border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl p-8 text-center relative">
+                            <input type="file" accept="image/*" @change="processarAssinatura" class="absolute inset-0 opacity-0 cursor-pointer">
+                            <i class="fas fa-pen-nib text-4xl text-blue-500 mb-2"></i>
+                            <p class="text-sm font-bold text-blue-900">Enviar assinatura escaneada</p>
+                        </div>
+                        <div v-if="signaturePreview" class="bg-white p-3 rounded-lg border shadow-sm text-xs">
+                            <p class="font-bold text-gray-700 mb-2">Recorte pronto para carteirinha</p>
+                            <img :src="signaturePreview" alt="Pré-visualização assinatura" class="w-full rounded border">
+                            <p class="mt-2 text-gray-500 break-all">Hash: {{ assinaturaHash }}</p>
+                        </div>
+                        <button v-if="signaturePreview" @click="step=5" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg">Continuar para documentos</button>
+                    </div>
+
+                    <!-- Passo 5: Validação Acadêmica e documentos -->
+                    <div v-else-if="step === 5" key="diploma" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Validação Acadêmica</h2>
+                        <div class="flex border-b">
+                            <button @click="diplomaMode='qrcode'" :class="diplomaMode==='qrcode' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-2 text-sm transition"><i class="fas fa-qrcode mr-2"></i>QR Code</button>
+                            <button @click="diplomaMode='pdf'" :class="diplomaMode==='pdf' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-2 text-sm transition"><i class="fas fa-file-pdf mr-2"></i>PDF</button>
+                        </div>
+                        <div class="text-xs text-gray-500">Envie também RG, Reservista, foto da carteirinha, PIS e tipo sanguíneo após o diploma. Alerta de revisão humana é disparado se algo fugir do padrão.</div>
+
+                        <div v-if="diplomaMode === 'qrcode'" class="py-4 space-y-4">
+                            <div class="bg-black rounded-xl h-48 flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-camera text-gray-600 text-4xl mb-2"></i>
+                                <button @click="scanQRCode" class="absolute bottom-4 bg-white text-black px-4 py-1 rounded-full text-xs font-bold">Simular leitura</button>
+                            </div>
+                            <input v-model="qrInput" class="w-full mt-2 p-2 border rounded bg-white text-xs">
+                        </div>
+
+                        <div v-if="diplomaMode === 'pdf'" class="py-4">
+                            <div class="border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl p-8 text-center cursor-pointer relative">
+                                <input type="file" @change="handleFileUpload" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-2"></i>
+                                <p class="text-sm font-bold text-blue-900">Enviar Diploma PDF</p>
+                            </div>
+                        </div>
+                        <div v-if="logs.length > 0" class="bg-gray-900 text-green-400 p-3 rounded-lg text-[10px] font-mono h-32 overflow-y-auto">
+                            <div v-for="log in logs" class="mb-1 border-b border-gray-800 pb-1">> {{ log }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Passo 6: sucesso ou revisão -->
+                    <div v-else-if="step === 6" key="success" class="flex flex-col items-center justify-center h-full text-center">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce" v-if="!humanReview"><i class="fas fa-check text-4xl text-green-600"></i></div>
+                        <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mb-4" v-else><i class="fas fa-user-shield text-4xl text-yellow-600"></i></div>
+                        <h2 class="text-xl font-bold text-gray-800">{{ humanReview ? 'Revisão humana necessária' : 'Cadastro realizado!' }}</h2>
+                        <p class="text-sm text-gray-500 mt-2" v-if="humanReview">Um analista do CREA foi notificado para conferir documentos e assinatura.</p>
+                        <div class="mt-6 w-full text-left bg-white border p-4 rounded-xl shadow-sm" v-if="hash">
+                            <p class="text-xs font-bold text-gray-400 uppercase mb-2">Blockchain Hash</p>
+                            <span class="font-mono text-blue-600 text-[10px] break-all">{{ hash }}</span>
+                        </div>
+                        <div class="mt-6 w-full text-left bg-yellow-50 border border-yellow-200 p-4 rounded-xl shadow-sm" v-if="humanReview">
+                            <p class="text-xs font-bold text-yellow-700 uppercase mb-2">Etapas salvas</p>
+                            <ul class="text-xs text-yellow-700 list-disc ml-4">
+                                <li>Dados Gov.br + e-mail validados</li>
+                                <li>Assinatura capturada e hash gerado</li>
+                                <li>Documentos aguardam conferência manual do CREA</li>
+                            </ul>
+                        </div>
+                    </div>
+                </transition>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+        const API_URL = "http://127.0.0.1:8000";
+
+        createApp({
+            data() {
+                return {
+                    step: 0,
+                    loading: false,
+                    diplomaMode: 'qrcode',
+                    user: {},
+                    qrInput: 'http://diplomas.ufrgs.br/validar/12345',
+                    logs: [],
+                    hash: '',
+                    email: '',
+                    cpfInput: '',
+                    codeSent: false,
+                    typedCode: '',
+                    verificationCode: '123456',
+                    solicitacaoId: null,
+                    signaturePreview: '',
+                    assinaturaHash: '',
+                    humanReview: false,
+                }
+            },
+            methods: {
+                addLog(msg) { this.logs.push(msg); },
+                enviarCodigo() {
+                    if(!this.email || !this.cpfInput) { alert('Informe CPF e e-mail'); return; }
+                    this.codeSent = true; this.step = 1;
+                    this.addLog('Código enviado para ' + this.email);
+                },
+                validarCodigo() {
+                    if(this.typedCode === this.verificationCode) {
+                        this.step = 2;
+                    } else {
+                        alert('Código inválido. Use 123456 para o mock.');
+                    }
+                },
+                async loginGov() {
+                    this.loading = true;
+                    try {
+                        const res = await fetch(`${API_URL}/auth/govbr`, { method: 'POST' });
+                        const data = await res.json();
+                        this.user = data.user; this.step = 3;
+                    } catch(e) { alert("Erro de Backend"); } finally { this.loading = false; }
+                },
+                async confirmarDados() {
+                    if(!this.email || !this.cpfInput) { alert('Preencha CPF e e-mail antes de continuar.'); return; }
+                    const payload = {
+                        nome: this.user.nome || 'Profissional CREA',
+                        cpf: this.cpfInput,
+                        email: this.email,
+                        endereco: this.user.endereco,
+                        situacao_militar: this.user.situacao_militar,
+                    };
+                    try {
+                        const res = await fetch(`${API_URL}/processo/iniciar`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        this.solicitacaoId = data.id;
+                        this.logs = [`Processo ${data.id} salvo com dados validados.`];
+                        this.step = 4;
+                    } catch(e) {
+                        alert('Falha ao iniciar processo.');
+                    }
+                },
+                async processarAssinatura(event) {
+                    if(!this.solicitacaoId) { alert('Finalize a validação de dados primeiro.'); return; }
+                    const file = event.target.files[0]; if(!file) return;
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('solicitacao_id', this.solicitacaoId);
+                    try {
+                        const res = await fetch(`${API_URL}/assinatura/processar`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.signaturePreview = data.preview;
+                        this.assinaturaHash = data.assinatura_hash;
+                        this.humanReview = data.human_review;
+                        this.addLog(data.detalhe);
+                    } catch(e) {
+                        this.addLog('Erro ao processar assinatura.');
+                    }
+                },
+                async scanQRCode() {
+                    this.logs = []; this.addLog("Lendo QR...");
+                    try {
+                        const res = await fetch(`${API_URL}/validar/qrcode`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ qr_content: this.qrInput, user_cpf: this.user.cpf, solicitacao_id: this.solicitacaoId })
+                        });
+                        const data = await res.json();
+                        this.humanReview = data.human_review;
+                        if(data.valid) { this.addLog("QR Autêntico."); await this.finishProcess(); }
+                        else { this.addLog(data.msg); this.step = 6; }
+                    } catch(e) { this.addLog("Erro QR."); }
+                },
+                async handleFileUpload(event) {
+                    const file = event.target.files[0]; if(!file) return;
+                    this.logs = []; this.addLog("Enviando PDF...");
+                    const formData = new FormData(); formData.append('file', file);
+                    formData.append('nome', this.user.nome);
+                    formData.append('cpf', this.cpfInput || this.user.cpf);
+                    formData.append('endereco', this.user.endereco);
+                    formData.append('militar', this.user.situacao_militar);
+                    if(this.solicitacaoId) formData.append('solicitacao_id', this.solicitacaoId);
+                    try {
+                        const res = await fetch(`${API_URL}/upload/analisar`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.solicitacaoId = data.id;
+                        this.humanReview = data.human_review;
+                        this.addLog(`OCR: ${data.analise.instituicao}`);
+                        if(data.score > 80 && !data.human_review) {
+                            await this.finishProcess();
+                        } else {
+                            this.addLog('Encaminhado para revisão manual.');
+                            this.step = 6;
+                        }
+                    } catch(e) { this.addLog("Erro Upload."); }
+                },
+                async finishProcess() {
+                    if(this.humanReview) { this.step = 6; return; }
+                    if(!this.solicitacaoId) { this.addLog('Sem ID de solicitação.'); return; }
+                    this.addLog("Registrando Blockchain...");
+                    await new Promise(r => setTimeout(r, 800));
+                    const res = await fetch(`${API_URL}/blockchain/registrar/${this.solicitacaoId}`, { method: 'POST' });
+                    const data = await res.json();
+                    this.hash = data.hash; this.step = 6;
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
