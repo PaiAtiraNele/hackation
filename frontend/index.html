@@ -244,10 +244,6 @@
                                 <input v-model="cursoExterno.dataColacao" class="border rounded px-3 py-2" placeholder="Data colação (DD/MM/AAAA)" />
                                 <input v-model="cursoExterno.nascimento" class="border rounded px-3 py-2" placeholder="Data de nascimento" />
                             </div>
-                            <div class="flex items-center gap-2 text-xs">
-                                <input type="checkbox" v-model="cursoExterno.codigo" id="codigo" />
-                                <label for="codigo">Possui código/QR de confirmação?</label>
-                            </div>
                             <div class="flex gap-2 flex-wrap">
                                 <button @click="preencherCursoMock" class="bg-gray-100 text-gray-800 px-3 py-2 rounded text-xs font-bold">Preencher mock</button>
                                 <button @click="enviarCursoExterno" class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold">Enviar e-mail de validação</button>
@@ -427,7 +423,7 @@
                         assinatura: 'pendente',
                         ocr: 'pendente'
                     },
-                    cursoExterno: { curso: '', instituicao: '', estado: '', contato: '', codigo: false, matricula: '', cargaHoraria: '', periodo: '', dataColacao: '', nascimento: '' },
+                    cursoExterno: { curso: '', instituicao: '', estado: '', contato: '', matricula: '', cargaHoraria: '', periodo: '', dataColacao: '', nascimento: '' },
                     cursoExternoStatus: 'pendente',
                     cursoExternoMensagem: '',
                     boletoPago: false,
@@ -693,7 +689,6 @@
                         instituicao: 'Universidade Federal do Paraná',
                         estado: 'PR',
                         contato: 'registro@ufpr.br',
-                        codigo: false,
                         matricula: '2020A12345',
                         cargaHoraria: '1800h',
                         periodo: '2019/2 a 2023/1',
