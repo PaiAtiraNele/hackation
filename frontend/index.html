@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CREA Connect AI - V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .tab-active { border-bottom: 2px solid #3B82F6; color: #1E3A8A; font-weight: bold; }
+        .tab-inactive { color: #9CA3AF; }
+        .step-badge { width: 32px; height: 32px; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen font-sans overflow-hidden">
+    <div id="app" class="h-full flex flex-col md:flex-row">
+        <div class="w-full md:w-1/3 mx-auto h-full bg-white shadow-2xl relative flex flex-col md:rounded-3xl md:h-[95%] md:mt-4 md:border-8 md:border-gray-800 overflow-hidden">
+            <header class="bg-blue-900 text-white p-6 pt-8 rounded-b-3xl shadow-lg z-10">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h1 class="text-xl font-bold">CREA Connect <span class="text-cyan-400">AI</span></h1>
+                        <p class="text-[10px] uppercase tracking-widest text-blue-200">MVP V2.0 - Fluxo Fatiado</p>
+                    </div>
+                    <div class="bg-white/10 px-2 py-1 rounded text-[10px]">PWA Demo</div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-[10px] uppercase font-bold tracking-wider">
+                    <div class="flex items-center gap-2" v-for="(label, idx) in ['Login','Dados','Diploma','Assinatura']" :key="label">
+                        <div :class="['step-badge rounded-full flex items-center justify-center text-xs', step>=idx ? 'bg-cyan-400 text-blue-900' : 'bg-blue-700 text-white']">{{ idx+1 }}</div>
+                        <span :class="step>=idx ? 'text-cyan-200' : 'text-blue-200/70'">{{ label }}</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="flex-1 p-6 overflow-y-auto bg-gray-50 relative">
+                <div class="mb-3 text-[11px] text-gray-500 leading-tight">
+                    <p>Fluxo dividido em etapas salvas: validação de dados, diploma, assinatura manual e registro em blockchain.</p>
+                    <p class="text-blue-700 font-semibold" v-if="manualReview">Revisão humana necessária pelo CREA.</p>
+                </div>
+                <transition name="fade" mode="out-in">
+                    <div v-if="step === 0" key="login" class="flex flex-col items-center justify-center h-full space-y-6">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/23/Gov.br_logo.svg" alt="Gov.br" class="h-12 opacity-90">
+                        <p class="text-center text-gray-500 text-sm px-4">Utilize sua conta Gov.br para importar dados de identificação.</p>
+                        <button @click="loginGov" class="w-full bg-[#1351B4] text-white py-3 rounded-full font-bold shadow-lg hover:bg-[#0c3c8c] transition flex items-center justify-center gap-3">
+                            <i v-if="loading" class="fas fa-circle-notch fa-spin"></i>
+                            <span v-else>Entrar com Gov.br</span>
+                        </button>
+                    </div>
+
+                    <div v-else-if="step === 1" key="data-review" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Confirme e salve os dados do Gov.br</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+                            <div class="flex items-center gap-3 border-b pb-3">
+                                <img :src="user.foto" class="w-14 h-14 rounded-full border-2 border-green-500">
+                                <div>
+                                    <p class="font-bold text-gray-800">{{ user.nome }}</p>
+                                    <p class="text-xs text-gray-500">CPF: {{ user.cpf }}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">Endereço</label>
+                                <div class="flex gap-2 items-center text-sm text-gray-700 bg-gray-50 p-2 rounded"><i class="fas fa-map-marker-alt text-red-400"></i> {{ user.endereco }}</div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase">Situação Militar</label>
+                                <div class="flex gap-2 items-center text-sm text-gray-700 bg-gray-50 p-2 rounded"><i class="fas fa-shield-alt text-green-600"></i> {{ user.situacao_militar }}</div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button @click="salvarDados" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg">Salvar Dados do Gov.br</button>
+                        </div>
+                        <div v-if="scores.dados" class="text-xs text-gray-600">Pontuação automática: <strong>{{ scores.dados }}/100</strong></div>
+                    </div>
+
+                    <div v-else-if="step === 2" key="diploma" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Validação Acadêmica (etapa isolada)</h2>
+                        <p class="text-xs text-gray-500">Escolha o método e salve a etapa. Caso a pontuação seja baixa, enviaremos para revisão humana.</p>
+                        <div class="flex border-b">
+                            <button @click="diplomaMode='qrcode'" :class="diplomaMode==='qrcode' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-2 text-sm transition"><i class="fas fa-qrcode mr-2"></i>QR Code</button>
+                            <button @click="diplomaMode='pdf'" :class="diplomaMode==='pdf' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-2 text-sm transition"><i class="fas fa-file-pdf mr-2"></i>PDF</button>
+                        </div>
+                        <div v-if="diplomaMode === 'qrcode'" class="py-4 space-y-4">
+                            <div class="bg-black rounded-xl h-48 flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-camera text-gray-600 text-4xl mb-2"></i>
+                                <button @click="scanQRCode" class="absolute bottom-4 bg-white text-black px-4 py-1 rounded-full text-xs font-bold">Simular Leitura</button>
+                            </div>
+                            <input v-model="qrInput" class="w-full mt-2 p-2 border rounded bg-white text-xs" placeholder="Cole a URL de verificação do diploma">
+                        </div>
+                        <div v-if="diplomaMode === 'pdf'" class="py-4 space-y-2">
+                            <div class="border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl p-8 text-center cursor-pointer relative">
+                                <input type="file" @change="handleFileUpload" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-2"></i>
+                                <p class="text-sm font-bold text-blue-900">Enviar Diploma PDF</p>
+                            </div>
+                            <p class="text-[11px] text-gray-500">Use um arquivo com QR Code válido ou envie um PDF com a palavra "erro" para simular falha e exigir validação humana.</p>
+                        </div>
+
+                        <div v-if="logs.length > 0" class="bg-gray-900 text-green-400 p-3 rounded-lg text-[10px] font-mono h-32 overflow-y-auto">
+                            <div v-for="log in logs" class="mb-1 border-b border-gray-800 pb-1">> {{ log }}</div>
+                        </div>
+                        <div v-if="scores.diploma" class="text-xs text-gray-600">Pontuação de diploma: <strong>{{ scores.diploma }}/100</strong></div>
+                    </div>
+
+                    <div v-else-if="step === 3" key="assinatura" class="space-y-4">
+                        <h2 class="font-bold text-gray-800 text-lg">Captação de Assinatura Manual</h2>
+                        <p class="text-xs text-gray-500">Assine com caneta preta em área delimitada, recorte/escaneie e envie a imagem para impressão na carteirinha física.</p>
+                        <div class="border-2 border-dashed border-green-500 bg-green-50 rounded-xl p-6 text-center relative">
+                            <input type="file" accept="image/*,.pdf" @change="enviarAssinatura" class="absolute inset-0 opacity-0 cursor-pointer">
+                            <i class="fas fa-pen-fancy text-3xl text-green-600 mb-2"></i>
+                            <p class="font-semibold text-green-900">Clique ou arraste a assinatura escaneada</p>
+                            <p class="text-[11px] text-gray-500">Arquivos com o nome "recorte" simulam baixa qualidade e enviam para revisão do CREA.</p>
+                        </div>
+                        <div v-if="assinaturaStatus" class="text-xs text-gray-700 bg-white border p-3 rounded">
+                            Status da etapa: <strong>{{ assinaturaStatus }}</strong><br>
+                            <span v-if="assinaturaObs">{{ assinaturaObs }}</span>
+                        </div>
+                        <button @click="finalizarProcesso" class="w-full bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg" :disabled="!assinaturaStatus">Finalizar e registrar</button>
+                    </div>
+
+                    <div v-else-if="step === 4" key="success" class="flex flex-col items-center justify-center h-full text-center space-y-4">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-2 animate-bounce"><i class="fas fa-check text-4xl text-green-600"></i></div>
+                        <h2 class="text-xl font-bold text-gray-800">Processo concluído</h2>
+                        <div class="w-full text-left bg-white border p-4 rounded-xl shadow-sm space-y-2">
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Blockchain Hash</p>
+                                <span class="font-mono text-blue-600 text-[10px] break-all">{{ hash }}</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase mb-1">Status Final</p>
+                                <span class="text-sm font-semibold" :class="manualReview ? 'text-amber-600' : 'text-green-700'">{{ finalStatus }}</span>
+                            </div>
+                            <p class="text-xs text-gray-500" v-if="observacao">{{ observacao }}</p>
+                        </div>
+                        <button @click="reset" class="text-xs text-blue-600 underline">Reiniciar demonstração</button>
+                    </div>
+                </transition>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+        const API_URL = "http://127.0.0.1:8000";
+
+        createApp({
+            data() {
+                return {
+                    step: 0,
+                    loading: false,
+                    diplomaMode: 'qrcode',
+                    user: {},
+                    qrInput: 'http://diplomas.ufrgs.br/validar/12345',
+                    logs: [],
+                    hash: '',
+                    solicitationId: null,
+                    manualReview: false,
+                    assinaturaStatus: '',
+                    assinaturaObs: '',
+                    finalStatus: '',
+                    observacao: '',
+                    scores: { dados: null, diploma: null }
+                }
+            },
+            methods: {
+                reset() {
+                    this.step = 0; this.loading = false; this.diplomaMode = 'qrcode'; this.user = {}; this.qrInput = 'http://diplomas.ufrgs.br/validar/12345';
+                    this.logs = []; this.hash=''; this.solicitationId=null; this.manualReview=false; this.assinaturaStatus=''; this.assinaturaObs=''; this.finalStatus=''; this.observacao=''; this.scores={dados:null,diploma:null};
+                },
+                addLog(msg) { this.logs.push(msg); },
+                async loginGov() {
+                    this.loading = true;
+                    try {
+                        const res = await fetch(`${API_URL}/auth/govbr`, { method: 'POST' });
+                        const data = await res.json();
+                        this.user = data.user; this.step = 1;
+                    } catch(e) { alert("Erro de Backend"); } finally { this.loading = false; }
+                },
+                async salvarDados() {
+                    try {
+                        const res = await fetch(`${API_URL}/processo/iniciar`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                nome: this.user.nome,
+                                cpf: this.user.cpf,
+                                endereco: this.user.endereco,
+                                situacao_militar: this.user.situacao_militar,
+                                nivel: this.user.nivel
+                            })
+                        });
+                        const data = await res.json();
+                        this.solicitationId = data.id;
+                        this.scores.dados = data.score_dados;
+                        this.manualReview = data.precisa_validacao_humana;
+                        this.step = 2;
+                    } catch(e) {
+                        alert('Falha ao salvar dados.');
+                    }
+                },
+                async scanQRCode() {
+                    if(!this.solicitationId) return alert('Salve os dados primeiro.');
+                    this.logs = []; this.addLog("Lendo QR...");
+                    try {
+                        const res = await fetch(`${API_URL}/validar/qrcode`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ qr_content: this.qrInput, user_cpf: this.user.cpf, solicitacao_id: this.solicitationId })
+                        });
+                        const data = await res.json();
+                        this.scores.diploma = data.score;
+                        this.manualReview = data.precisa_validacao_humana;
+                        this.addLog(data.msg);
+                        if(data.valid) { this.addLog("QR Autêntico. Etapa salva."); this.step = 3; }
+                        else { this.addLog("Falha. Rota para validação humana."); }
+                    } catch(e) { this.addLog("Erro QR."); }
+                },
+                async handleFileUpload(event) {
+                    if(!this.solicitationId) return alert('Salve os dados primeiro.');
+                    const file = event.target.files[0]; if(!file) return;
+                    this.logs = []; this.addLog("Enviando PDF...");
+                    const formData = new FormData(); formData.append('solicitacao_id', this.solicitationId);
+                    formData.append('file', file);
+                    formData.append('nome', this.user.nome); formData.append('cpf', this.user.cpf);
+                    formData.append('endereco', this.user.endereco); formData.append('militar', this.user.situacao_militar);
+                    try {
+                        const res = await fetch(`${API_URL}/upload/analisar`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.scores.diploma = data.score;
+                        this.manualReview = data.precisa_validacao_humana;
+                        this.addLog(`OCR: ${data.analise.instituicao}`);
+                        if(data.score > 80) { this.addLog('PDF aprovado. Etapa salva.'); this.step = 3; }
+                        else { this.addLog('Pontuação baixa, revisão humana necessária.'); }
+                    } catch(e) { this.addLog("Erro Upload."); }
+                },
+                async enviarAssinatura(event) {
+                    if(!this.solicitationId) return alert('Finalize as etapas anteriores.');
+                    const file = event.target.files[0]; if(!file) return;
+                    const formData = new FormData();
+                    formData.append('solicitacao_id', this.solicitationId);
+                    formData.append('file', file);
+                    try {
+                        const res = await fetch(`${API_URL}/assinatura/capturar`, { method: 'POST', body: formData });
+                        const data = await res.json();
+                        this.assinaturaStatus = data.status;
+                        this.assinaturaObs = data.observacao;
+                        this.manualReview = data.precisa_validacao_humana;
+                    } catch(e) { alert('Falha na assinatura.'); }
+                },
+                async finalizarProcesso() {
+                    if(!this.assinaturaStatus) return alert('Capture a assinatura antes de finalizar.');
+                    this.addLog('Registrando Blockchain...');
+                    const res = await fetch(`${API_URL}/blockchain/registrar/${this.solicitationId}`, { method: 'POST' });
+                    const data = await res.json();
+                    this.hash = data.hash; this.finalStatus = data.status; this.observacao = data.observacao; this.manualReview = data.precisa_validacao_humana;
+                    this.step = 4;
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
